@@ -854,9 +854,9 @@
 .user-avatar-large:hover {
     transform: scale(1.05);
     box-shadow: 0 10px 25px rgba(255, 107, 157, 0.3);
-    }
+}
 
-        .avatar-options {
+.avatar-options {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 15px;
@@ -1266,83 +1266,180 @@
     }
 </script>
 <script>
+// ==================== КОНФИГУРАЦИЯ SUPABASE ====================
+const SUPABASE_CONFIG = {
+    URL: "https://yuhvlgcrwwotcocbyqss.supabase.co",
+    ANON_KEY: "sb_publishable_ue7GM0DZPq7stfK-nbpcXA_kcOzZlvh"  // ЗАМЕНИТЕ НА ВАШ ПОЛНЫЙ КЛЮЧ!
+};
+
 // ==================== ХРАНЕНИЕ ДАННЫХ ====================
-// Ключи для localStorage
-const STORAGE_USERS = 'hide_seek_users';
-const STORAGE_REVIEWS = 'hide_seek_reviews';
 const STORAGE_CURRENT_USER = 'hide_seek_current_user';
 
-// Инициализация данных
 let users = [];
 let reviews = [];
 let currentUser = null;
 
-// Загрузка данных из localStorage
-function loadData() {
-    const savedUsers = localStorage.getItem(STORAGE_USERS);
-    if (savedUsers) {
-        users = JSON.parse(savedUsers);
-    } else {
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+function showNotification(message, type = 'info') {
+    let notification = document.getElementById('customNotification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'customNotification';
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            z-index: 10001;
+            animation: slideIn 0.3s ease;
+            background: ${type === 'success' ? 'linear-gradient(135deg, #4caf50, #45a049)' : 'linear-gradient(135deg, #ff6b9d, #ff3b6f)'};
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        `;
+        document.body.appendChild(notification);
+    }
+    
+    notification.textContent = message;
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.style.display = 'none';
+            notification.style.opacity = '1';
+        }, 300);
+    }, 3000);
+}
+
+// Хеширование пароля
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+// ==================== РАБОТА С SUPABASE ====================
+
+async function supabaseRequest(endpoint, options = {}) {
+    const url = `${SUPABASE_CONFIG.URL}/rest/v1/${endpoint}`;
+    const headers = {
+        'apikey': SUPABASE_CONFIG.ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.ANON_KEY}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
+    
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+    }
+    
+    return response.json();
+}
+
+// Загрузка пользователей
+async function loadUsers() {
+    try {
+        users = await supabaseRequest('users?select=*');
+    } catch (error) {
+        console.error('Ошибка загрузки пользователей:', error);
         users = [];
     }
-    
-    const savedReviews = localStorage.getItem(STORAGE_REVIEWS);
-    if (savedReviews) {
-        reviews = JSON.parse(savedReviews);
-    } else {
+}
+
+// Загрузка отзывов
+async function loadReviews() {
+    try {
+        const reviewsData = await supabaseRequest('reviews?select=*&order=created_at.desc');
+        
+        reviews = reviewsData.map(r => ({
+            id: r.id,
+            userId: r.user_id,
+            rating: r.rating,
+            text: r.text,
+            date: r.created_at
+        }));
+        
+        updateRatingSummary();
+        renderReviews();
+    } catch (error) {
+        console.error('Ошибка загрузки отзывов:', error);
         reviews = [];
-    }
-    
-    const savedCurrentUser = localStorage.getItem(STORAGE_CURRENT_USER);
-    if (savedCurrentUser) {
-        currentUser = JSON.parse(savedCurrentUser);
-        updateUserUI();
+        renderReviews();
     }
 }
 
-// Сохранение пользователей
-function saveUsers() {
-    localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+// Добавление отзыва
+async function addReview(review) {
+    try {
+        await supabaseRequest('reviews', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: review.id,
+                user_id: review.userId,
+                rating: review.rating,
+                text: review.text,
+                created_at: review.date
+            })
+        });
+        return true;
+    } catch (error) {
+        console.error('Ошибка добавления отзыва:', error);
+        return false;
+    }
 }
 
-// Сохранение отзывов
-function saveReviews() {
-    localStorage.setItem(STORAGE_REVIEWS, JSON.stringify(reviews));
-    updateRatingSummary();
-    renderReviews();
+// Удаление отзыва
+async function deleteReviewFromDB(reviewId) {
+    try {
+        await supabaseRequest(`reviews?id=eq.${reviewId}`, {
+            method: 'DELETE'
+        });
+        return true;
+    } catch (error) {
+        console.error('Ошибка удаления отзыва:', error);
+        return false;
+    }
 }
 
-// Сохранение текущего пользователя
-function saveCurrentUser() {
-    if (currentUser) {
-        localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(currentUser));
-    } else {
-        localStorage.removeItem(STORAGE_CURRENT_USER);
+// Обновление аватарки
+async function updateUserAvatar(userId, avatarUrl) {
+    try {
+        await supabaseRequest(`users?id=eq.${userId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ avatar_url: avatarUrl })
+        });
+        return true;
+    } catch (error) {
+        console.error('Ошибка обновления аватарки:', error);
+        return false;
     }
 }
 
 // ==================== АВТОРИЗАЦИЯ ====================
-function openAuthModal() {
-    document.getElementById('authModal').classList.add('active');
-}
 
-function closeAuthModal() {
-    document.getElementById('authModal').classList.remove('active');
-    document.getElementById('loginError').style.display = 'none';
-    document.getElementById('regError').style.display = 'none';
-}
-
-function switchToRegister() {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerForm').style.display = 'block';
-}
-
-function switchToLogin() {
-    document.getElementById('registerForm').style.display = 'none';
-    document.getElementById('loginForm').style.display = 'block';
-}
-
-function register() {
+async function register() {
     const email = document.getElementById('regEmail').value.trim();
     const username = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value;
@@ -1353,43 +1450,65 @@ function register() {
         errorEl.style.display = 'block';
         return;
     }
-
-        if (password.length !== 6) {
+    
+    if (password.length !== 6) {
         errorEl.textContent = 'Пароль должен содержать ровно 6 символов';
         errorEl.style.display = 'block';
         return;
     }
     
-    if (users.find(u => u.email === email)) {
-        errorEl.textContent = 'Пользователь с таким email уже существует';
+    try {
+        // Проверяем, существует ли пользователь
+        const existingUsers = await supabaseRequest(`users?email=eq.${encodeURIComponent(email)}&select=id`);
+        
+        if (existingUsers.length > 0) {
+            errorEl.textContent = 'Пользователь с таким email уже существует';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        const passwordHash = await hashPassword(password);
+        const userId = Date.now().toString();
+        const avatarColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+        
+        await supabaseRequest('users', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: userId,
+                email: email,
+                username: username,
+                password_hash: passwordHash,
+                avatar_color: avatarColor,
+                avatar_url: null
+            })
+        });
+        
+        currentUser = {
+            id: userId,
+            email: email,
+            username: username,
+            avatarColor: avatarColor,
+            avatarUrl: null
+        };
+        
+        localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(currentUser));
+        updateUserUI();
+        closeAuthModal();
+        
+        document.getElementById('regEmail').value = '';
+        document.getElementById('regUsername').value = '';
+        document.getElementById('regPassword').value = '';
+        
+        showNotification('Регистрация успешна!', 'success');
+        
+    } catch (error) {
+        console.error('Ошибка регистрации:', error);
+        errorEl.textContent = 'Ошибка сервера. Попробуйте позже.';
         errorEl.style.display = 'block';
-        return;
     }
-    
-const newUser = {
-    id: Date.now().toString(),
-    email: email,
-    username: username,
-    password: password,
-    avatarColor: '#' + Math.floor(Math.random()*16777215).toString(16),
-    avatarUrl: null  // Добавить эту строку
-};
-    
-    users.push(newUser);
-    saveUsers();
-    
-    currentUser = { id: newUser.id, email: newUser.email, username: newUser.username, avatarColor: newUser.avatarColor };
-    saveCurrentUser();
-    updateUserUI();
-    closeAuthModal();
-    
-    // Очистка полей
-    document.getElementById('regEmail').value = '';
-    document.getElementById('regUsername').value = '';
-    document.getElementById('regPassword').value = '';
 }
 
-function login() {
+async function login() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     const errorEl = document.getElementById('loginError');
@@ -1400,34 +1519,56 @@ function login() {
         return;
     }
     
-    const user = users.find(u => u.email === email && u.password === password);
-    
-    if (!user) {
-        errorEl.textContent = 'Неверный email или пароль';
+    try {
+        const passwordHash = await hashPassword(password);
+        
+        const usersData = await supabaseRequest(`users?email=eq.${encodeURIComponent(email)}&select=*`);
+        
+        if (usersData.length === 0 || usersData[0].password_hash !== passwordHash) {
+            errorEl.textContent = 'Неверный email или пароль';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        const user = usersData[0];
+        
+        currentUser = {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            avatarColor: user.avatar_color,
+            avatarUrl: user.avatar_url
+        };
+        
+        localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(currentUser));
+        updateUserUI();
+        closeAuthModal();
+        
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+        
+        showNotification('Добро пожаловать!', 'success');
+        
+    } catch (error) {
+        console.error('Ошибка входа:', error);
+        errorEl.textContent = 'Ошибка сервера. Попробуйте позже.';
         errorEl.style.display = 'block';
-        return;
     }
-    
- currentUser = { 
-    id: user.id, 
-    email: user.email, 
-    username: user.username, 
-    avatarColor: user.avatarColor,
-    avatarUrl: user.avatarUrl || null  // Добавить эту строку
-};
-    saveCurrentUser();
-    updateUserUI();
-    closeAuthModal();
-    
-    // Очистка полей
-    document.getElementById('loginEmail').value = '';
-    document.getElementById('loginPassword').value = '';
 }
 
 function logout() {
     currentUser = null;
-    saveCurrentUser();
+    localStorage.removeItem(STORAGE_CURRENT_USER);
     updateUserUI();
+    showNotification('Вы вышли из аккаунта', 'info');
+}
+
+function loadCurrentUser() {
+    const saved = localStorage.getItem(STORAGE_CURRENT_USER);
+    if (saved) {
+        currentUser = JSON.parse(saved);
+        updateUserUI();
+    }
 }
 
 function updateUserUI() {
@@ -1467,6 +1608,7 @@ function updateUserUI() {
 }
 
 // ==================== ОТЗЫВЫ ====================
+
 function updateRatingSummary() {
     if (reviews.length === 0) {
         document.querySelector('#ratingSummary .average').textContent = '0';
@@ -1490,7 +1632,7 @@ function updateRatingSummary() {
     document.querySelector('#ratingSummary .count').textContent = `${reviewCount} ${reviewCount === 1 ? 'отзыв' : reviewCount < 5 ? 'отзыва' : 'отзывов'}`;
 }
 
-function renderReviews() {
+async function renderReviews() {
     const reviewsList = document.getElementById('reviewsList');
     
     if (reviews.length === 0) {
@@ -1498,11 +1640,14 @@ function renderReviews() {
         return;
     }
     
+    // Загружаем пользователей для отзывов
+    await loadUsers();
+    
     reviewsList.innerHTML = reviews.map(review => {
         const user = users.find(u => u.id === review.userId);
         const username = user ? user.username : 'Пользователь удален';
-        const avatarColor = user ? user.avatarColor : '#ff6b9d';
-        const avatarUrl = user ? user.avatarUrl : null;
+        const avatarColor = user ? user.avatar_color : '#ff6b9d';
+        const avatarUrl = user ? user.avatar_url : null;
         const firstLetter = username.charAt(0).toUpperCase();
         
         let avatarHtml = '';
@@ -1537,41 +1682,31 @@ function renderReviews() {
     }).join('');
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
-
-// Проверка, оставлял ли пользователь отзыв
-function hasUserReview() {
+async function hasUserReview() {
     if (!currentUser) return false;
     return reviews.some(r => r.userId === currentUser.id);
 }
 
-function openReviewModal() {
-    if (!currentUser) {
-        openAuthModal();
-        return;
-    }
-    
-    if (hasUserReview()) {
-        alert('Вы уже оставили отзыв. Удалите старый, чтобы оставить новый.');
-        return;
-    }
-    
-    document.getElementById('reviewModal').classList.add('active');
-    document.getElementById('reviewText').value = '';
-    document.getElementById('reviewError').style.display = 'none';
-    updateStarRating(0);
+// ==================== МОДАЛЬНЫЕ ОКНА ====================
+
+function openAuthModal() {
+    document.getElementById('authModal').classList.add('active');
 }
 
-function closeReviewModal() {
-    document.getElementById('reviewModal').classList.remove('active');
+function closeAuthModal() {
+    document.getElementById('authModal').classList.remove('active');
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('regError').style.display = 'none';
+}
+
+function switchToRegister() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'block';
+}
+
+function switchToLogin() {
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('loginForm').style.display = 'block';
 }
 
 let selectedRating = 0;
@@ -1588,7 +1723,6 @@ function updateStarRating(rating) {
     });
 }
 
-// Инициализация звездного рейтинга
 function initStarRating() {
     const stars = document.querySelectorAll('#starRating i');
     stars.forEach(star => {
@@ -1599,14 +1733,35 @@ function initStarRating() {
     });
 }
 
-function submitReview() {
+async function openReviewModal() {
+    if (!currentUser) {
+        openAuthModal();
+        return;
+    }
+    
+    if (await hasUserReview()) {
+        alert('Вы уже оставили отзыв. Удалите старый, чтобы оставить новый.');
+        return;
+    }
+    
+    document.getElementById('reviewModal').classList.add('active');
+    document.getElementById('reviewText').value = '';
+    document.getElementById('reviewError').style.display = 'none';
+    updateStarRating(0);
+}
+
+function closeReviewModal() {
+    document.getElementById('reviewModal').classList.remove('active');
+}
+
+async function submitReview() {
     if (!currentUser) {
         closeReviewModal();
         openAuthModal();
         return;
     }
     
-    if (hasUserReview()) {
+    if (await hasUserReview()) {
         document.getElementById('reviewError').textContent = 'Вы уже оставили отзыв. Удалите старый, чтобы оставить новый.';
         document.getElementById('reviewError').style.display = 'block';
         return;
@@ -1639,13 +1794,20 @@ function submitReview() {
         date: new Date().toISOString()
     };
     
-    reviews.push(newReview);
-    saveReviews();
-    closeReviewModal();
-    selectedRating = 0;
+    const success = await addReview(newReview);
+    
+    if (success) {
+        closeReviewModal();
+        selectedRating = 0;
+        await loadReviews();
+        showNotification('Отзыв успешно добавлен!', 'success');
+    } else {
+        document.getElementById('reviewError').textContent = 'Ошибка при добавлении отзыва';
+        document.getElementById('reviewError').style.display = 'block';
+    }
 }
 
-function deleteReview(reviewId) {
+async function deleteReview(reviewId) {
     const review = reviews.find(r => r.id === reviewId);
     if (!review) return;
     
@@ -1655,13 +1817,18 @@ function deleteReview(reviewId) {
     }
     
     if (confirm('Вы уверены, что хотите удалить свой отзыв?')) {
-        reviews = reviews.filter(r => r.id !== reviewId);
-        saveReviews();
+        const success = await deleteReviewFromDB(reviewId);
+        if (success) {
+            await loadReviews();
+            showNotification('Отзыв удален', 'success');
+        } else {
+            alert('Ошибка при удалении отзыва');
+        }
     }
 }
 
-// ==================== УПРАВЛЕНИЕ АВАТАРКОЙ ====================
-// Пресеты аватарок (можно добавить свои URL)
+// ==================== АВАТАРКИ ====================
+
 const avatarPresets = [
     { name: "🌸 Сакура", url: "https://cdn-icons-png.flaticon.com/512/1998/1998592.png", emoji: "🌸" },
     { name: "🐱 Котик", url: "https://cdn-icons-png.flaticon.com/512/1998/1998624.png", emoji: "🐱" },
@@ -1678,28 +1845,20 @@ const avatarPresets = [
 ];
 
 let selectedAvatarUrl = null;
-let tempAvatarUrl = null;
 
 function openProfileModal() {
     if (!currentUser) return;
     
     document.getElementById('profileModal').classList.add('active');
     selectedAvatarUrl = currentUser.avatarUrl || null;
-    tempAvatarUrl = selectedAvatarUrl;
     
-    // Обновляем превью
     updateProfileAvatarPreview(selectedAvatarUrl, currentUser.username);
-    
-    // Загружаем пресеты
     renderAvatarPresets();
-    
-    // Сбрасываем вкладки
     switchAvatarTab('preset');
 }
 
 function closeProfileModal() {
     document.getElementById('profileModal').classList.remove('active');
-    // Очищаем загрузки
     document.getElementById('avatarFileInput').value = '';
     document.getElementById('uploadPreview').style.display = 'none';
     document.getElementById('urlPreview').style.display = 'none';
@@ -1735,10 +1894,8 @@ function renderAvatarPresets() {
 
 function selectAvatarPreset(url) {
     selectedAvatarUrl = url;
-    tempAvatarUrl = url;
     updateProfileAvatarPreview(url, currentUser.username);
     
-    // Обновляем выделение в пресетах
     document.querySelectorAll('.avatar-option').forEach(option => {
         option.classList.remove('selected');
     });
@@ -1746,13 +1903,11 @@ function selectAvatarPreset(url) {
 }
 
 function switchAvatarTab(tab) {
-    // Обновляем активную вкладку
     document.querySelectorAll('.avatar-tab').forEach(btn => {
         btn.classList.remove('active');
     });
     event.target.classList.add('active');
     
-    // Показываем нужный контент
     document.getElementById('presetTab').style.display = 'none';
     document.getElementById('uploadTab').style.display = 'none';
     document.getElementById('urlTab').style.display = 'none';
@@ -1766,25 +1921,15 @@ function switchAvatarTab(tab) {
     }
 }
 
-// Загрузка файла
-document.addEventListener('DOMContentLoaded', () => {
-    const fileInput = document.getElementById('avatarFileInput');
-    if (fileInput) {
-        fileInput.addEventListener('change', handleFileUpload);
-    }
-});
-
 function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    // Проверка типа файла
     if (!file.type.match('image.*')) {
         alert('Пожалуйста, выберите изображение');
         return;
     }
     
-    // Проверка размера (5MB)
     if (file.size > 5 * 1024 * 1024) {
         alert('Размер файла не должен превышать 5MB');
         return;
@@ -1794,10 +1939,8 @@ function handleFileUpload(event) {
     reader.onload = function(e) {
         const imageUrl = e.target.result;
         selectedAvatarUrl = imageUrl;
-        tempAvatarUrl = imageUrl;
         updateProfileAvatarPreview(imageUrl, currentUser.username);
         
-        // Показываем превью загрузки
         const uploadPreview = document.getElementById('uploadPreview');
         uploadPreview.style.backgroundImage = `url(${imageUrl})`;
         uploadPreview.style.backgroundSize = 'cover';
@@ -1814,14 +1957,11 @@ function loadAvatarFromUrl() {
         return;
     }
     
-    // Проверяем, загружается ли изображение
     const img = new Image();
     img.onload = function() {
         selectedAvatarUrl = url;
-        tempAvatarUrl = url;
         updateProfileAvatarPreview(url, currentUser.username);
         
-        // Показываем превью URL
         const urlPreview = document.getElementById('urlPreview');
         urlPreview.style.backgroundImage = `url(${url})`;
         urlPreview.style.backgroundSize = 'cover';
@@ -1834,98 +1974,36 @@ function loadAvatarFromUrl() {
     img.src = url;
 }
 
-function saveAvatar() {
+async function saveAvatar() {
     if (!currentUser) return;
     
-    // Обновляем аватарку пользователя
-    if (selectedAvatarUrl) {
-        currentUser.avatarUrl = selectedAvatarUrl;
+    const success = await updateUserAvatar(currentUser.id, selectedAvatarUrl || null);
+    
+    if (success) {
+        currentUser.avatarUrl = selectedAvatarUrl || null;
+        localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(currentUser));
+        updateUserUI();
+        closeProfileModal();
+        await loadReviews();
+        showNotification('Аватарка успешно обновлена!', 'success');
     } else {
-        delete currentUser.avatarUrl;
+        showNotification('Ошибка при обновлении аватарки', 'error');
     }
-    
-    // Обновляем пользователя в массиве users
-    const userIndex = users.findIndex(u => u.id === currentUser.id);
-    if (userIndex !== -1) {
-        users[userIndex].avatarUrl = currentUser.avatarUrl;
-        saveUsers();
-    }
-    
-    // Сохраняем текущего пользователя
-    saveCurrentUser();
-    
-    // Обновляем UI
-    updateUserUI();
-    
-    // Перерисовываем отзывы (чтобы обновить аватарки в отзывах)
-    renderReviews();
-    
-    closeProfileModal();
-    
-    // Показываем уведомление
-    showNotification('Аватарка успешно обновлена!', 'success');
-}
-
-// Простое уведомление
-function showNotification(message, type = 'info') {
-    // Создаем уведомление, если его нет
-    let notification = document.getElementById('customNotification');
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'customNotification';
-        notification.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 15px 25px;
-            border-radius: 50px;
-            color: white;
-            font-weight: 600;
-            z-index: 10001;
-            animation: slideIn 0.3s ease;
-            background: ${type === 'success' ? 'linear-gradient(135deg, #4caf50, #45a049)' : 'linear-gradient(135deg, #ff6b9d, #ff3b6f)'};
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        `;
-        document.body.appendChild(notification);
-        
-        // Добавляем анимацию
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    notification.textContent = message;
-    notification.style.display = 'block';
-    
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-            notification.style.display = 'none';
-            notification.style.opacity = '1';
-        }, 300);
-    }, 3000);
 }
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
-// Добавить в конец DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
+
+document.addEventListener('DOMContentLoaded', async () => {
+    loadCurrentUser();
+    await loadUsers();
+    await loadReviews();
     initStarRating();
-    renderReviews();
-    updateRatingSummary();
     
-    // Закрытие модалок по клику на фон
+    const fileInput = document.getElementById('avatarFileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileUpload);
+    }
+    
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -1933,12 +2011,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-
-    // Добавить инициализацию превью аватарки (если нужно)
+    
     if (currentUser) {
         updateProfileAvatarPreview(currentUser.avatarUrl, currentUser.username);
     }
 });
+
+// Экспорт глобальных функций
+window.openAuthModal = openAuthModal;
+window.closeAuthModal = closeAuthModal;
+window.switchToRegister = switchToRegister;
+window.switchToLogin = switchToLogin;
+window.register = register;
+window.login = login;
+window.logout = logout;
+window.openReviewModal = openReviewModal;
+window.closeReviewModal = closeReviewModal;
+window.submitReview = submitReview;
+window.deleteReview = deleteReview;
+window.openProfileModal = openProfileModal;
+window.closeProfileModal = closeProfileModal;
+window.switchAvatarTab = switchAvatarTab;
+window.selectAvatarPreset = selectAvatarPreset;
+window.loadAvatarFromUrl = loadAvatarFromUrl;
+window.saveAvatar = saveAvatar;
 </script>
 
 <!-- Модалка регистрации/входа -->
@@ -2027,4 +2123,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 </body>
 </html>
-                    

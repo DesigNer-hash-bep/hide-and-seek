@@ -853,7 +853,7 @@
 
 .user-avatar-large:hover {
     transform: scale(1.05);
-    box-shadow: 0 10px 25px rgba(255, 107, 157, 0.3);
+        box-shadow: 0 10px 25px rgba(255, 107, 157, 0.3);
 }
 
 .avatar-options {
@@ -1266,17 +1266,20 @@
     }
 </script>
 <script>
+// ==================== КОНФИГУРАЦИЯ SUPABASE ====================
 const SUPABASE_CONFIG = {
     URL: "https://yuhvlgcrwwotcocbyqss.supabase.co",
-    ANON_KEY: "sb_publishable_ue7GM0DZPq7stfK-nbpcXA_kcOzZlvh"
+    ANON_KEY: "sb_publishable_ue7GM0DZPq7stfK-nbpcXA_kcOzZlvh"  // ЗАМЕНИТЕ НА ВАШ ПОЛНЫЙ КЛЮЧ!
 };
 
+// ==================== ХРАНЕНИЕ ДАННЫХ ====================
 const STORAGE_CURRENT_USER = 'hide_seek_current_user';
 
 let users = [];
 let reviews = [];
 let currentUser = null;
 
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -1321,6 +1324,7 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
+// Хеширование пароля
 async function hashPassword(password) {
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
@@ -1330,6 +1334,7 @@ async function hashPassword(password) {
         .join('');
 }
 
+// ==================== РАБОТА С SUPABASE ====================
 
 async function supabaseRequest(endpoint, options = {}) {
     const url = `${SUPABASE_CONFIG.URL}/rest/v1/${endpoint}`;
@@ -1337,7 +1342,7 @@ async function supabaseRequest(endpoint, options = {}) {
         'apikey': SUPABASE_CONFIG.ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_CONFIG.ANON_KEY}`,
         'Content-Type': 'application/json',
-        ...options.headers
+                ...options.headers
     };
     
     const response = await fetch(url, {
@@ -1353,6 +1358,7 @@ async function supabaseRequest(endpoint, options = {}) {
     return response.json();
 }
 
+// Загрузка пользователей
 async function loadUsers() {
     try {
         users = await supabaseRequest('users?select=*');
@@ -1362,6 +1368,7 @@ async function loadUsers() {
     }
 }
 
+// Загрузка отзывов
 async function loadReviews() {
     try {
         const reviewsData = await supabaseRequest('reviews?select=*&order=created_at.desc');
@@ -1383,6 +1390,7 @@ async function loadReviews() {
     }
 }
 
+// Добавление отзыва
 async function addReview(review) {
     try {
         const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/reviews`, {
@@ -1414,6 +1422,7 @@ async function addReview(review) {
     }
 }
 
+// Удаление отзыва
 async function deleteReviewFromDB(reviewId) {
     try {
         const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/reviews?id=eq.${reviewId}`, {
@@ -1426,6 +1435,7 @@ async function deleteReviewFromDB(reviewId) {
             }
         });
         
+        // DELETE запрос может возвращать 204 (No Content) при успешном удалении
         if (response.status === 204 || response.ok) {
             return true;
         }
@@ -1438,6 +1448,7 @@ async function deleteReviewFromDB(reviewId) {
     }
 }
 
+// Обновление аватарки
 async function updateUserAvatar(userId, avatarUrl) {
     try {
         const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/users?id=eq.${userId}`, {
@@ -1463,6 +1474,7 @@ async function updateUserAvatar(userId, avatarUrl) {
     }
 }
 
+// ==================== АВТОРИЗАЦИЯ ====================
 
 async function register() {
     const email = document.getElementById('regEmail').value.trim();
@@ -1483,6 +1495,7 @@ async function register() {
     }
     
     try {
+        // Проверяем, существует ли пользователь
         const existingUsers = await supabaseRequest(`users?email=eq.${encodeURIComponent(email)}&select=id`);
         
         if (existingUsers.length > 0) {
@@ -1536,6 +1549,7 @@ async function register() {
         
         showNotification('Регистрация успешна!', 'success');
         
+        // Перезагружаем пользователей
         await loadUsers();
         
     } catch (error) {
@@ -1596,6 +1610,7 @@ function updateUserUI() {
     }
 }
 
+// ==================== ОТЗЫВЫ ====================
 
 function updateRatingSummary() {
     if (reviews.length === 0) {
@@ -1628,6 +1643,7 @@ async function renderReviews() {
         return;
     }
     
+    // Загружаем пользователей для отзывов
     await loadUsers();
     
     reviewsList.innerHTML = reviews.map(review => {
@@ -1672,11 +1688,13 @@ async function renderReviews() {
 async function hasUserReview() {
     if (!currentUser) return false;
     
+    // Перезагружаем отзывы перед проверкой
     await loadReviews();
     
     return reviews.some(r => r.userId === currentUser.id);
 }
 
+// ==================== МОДАЛЬНЫЕ ОКНА ====================
 
 function openAuthModal() {
     document.getElementById('authModal').classList.add('active');
@@ -1750,6 +1768,7 @@ async function submitReview() {
         return;
     }
     
+    // Проверяем лимит отзывов
     const userHasReview = await hasUserReview();
     if (userHasReview) {
         document.getElementById('reviewError').textContent = 'Вы уже оставили отзыв. Удалите старый, чтобы оставить новый.';
@@ -1789,7 +1808,7 @@ async function submitReview() {
     if (success) {
         closeReviewModal();
         selectedRating = 0;
-        await loadReviews();
+        await loadReviews(); // Перезагружаем отзывы
         showNotification('Отзыв успешно добавлен!', 'success');
     } else {
         document.getElementById('reviewError').textContent = 'Ошибка при добавлении отзыва';
@@ -1809,7 +1828,9 @@ async function deleteReview(reviewId) {
     if (confirm('Вы уверены, что хотите удалить свой отзыв?')) {
         const success = await deleteReviewFromDB(reviewId);
         if (success) {
+            // Обновляем локальный массив отзывов
             reviews = reviews.filter(r => r.id !== reviewId);
+            // Перерисовываем интерфейс
             updateRatingSummary();
             await renderReviews();
             showNotification('Отзыв успешно удален!', 'success');
@@ -1894,4 +1915,228 @@ function selectAvatarPreset(url) {
     event.target.closest('.avatar-option').classList.add('selected');
 }
 
-function switchA
+function switchAvatarTab(tab) {
+    document.querySelectorAll('.avatar-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    document.getElementById('presetTab').style.display = 'none';
+    document.getElementById('uploadTab').style.display = 'none';
+    document.getElementById('urlTab').style.display = 'none';
+    
+    if (tab === 'preset') {
+        document.getElementById('presetTab').style.display = 'block';
+    } else if (tab === 'upload') {
+        document.getElementById('uploadTab').style.display = 'block';
+    } else if (tab === 'url') {
+        document.getElementById('urlTab').style.display = 'block';
+    }
+}
+
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.match('image.*')) {
+        alert('Пожалуйста, выберите изображение');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Размер файла не должен превышать 5MB');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const imageUrl = e.target.result;
+        selectedAvatarUrl = imageUrl;
+        updateProfileAvatarPreview(imageUrl, currentUser.username);
+        
+        const uploadPreview = document.getElementById('uploadPreview');
+        uploadPreview.style.backgroundImage = `url(${imageUrl})`;
+        uploadPreview.style.backgroundSize = 'cover';
+        uploadPreview.style.backgroundPosition = 'center';
+        uploadPreview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+function loadAvatarFromUrl() {
+    const url = document.getElementById('avatarUrlInput').value.trim();
+    if (!url) {
+        alert('Введите URL изображения');
+        return;
+    }
+    
+    const img = new Image();
+    img.onload = function() {
+        selectedAvatarUrl = url;
+        updateProfileAvatarPreview(url, currentUser.username);
+        
+        const urlPreview = document.getElementById('urlPreview');
+        urlPreview.style.backgroundImage = `url(${url})`;
+        urlPreview.style.backgroundSize = 'cover';
+        urlPreview.style.backgroundPosition = 'center';
+        urlPreview.style.display = 'block';
+    };
+    img.onerror = function() {
+        alert('Не удалось загрузить изображение по указанному URL');
+    };
+    img.src = url;
+}
+
+async function saveAvatar() {
+    if (!currentUser) return;
+    
+    const success = await updateUserAvatar(currentUser.id, selectedAvatarUrl || null);
+    
+    if (success) {
+        currentUser.avatarUrl = selectedAvatarUrl || null;
+        localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(currentUser));
+        updateUserUI();
+        closeProfileModal();
+        
+        // Перезагружаем пользователей и отзывы для обновления аватарок
+        await loadUsers();
+        await loadReviews();
+        
+        showNotification('Аватарка успешно обновлена!', 'success');
+    } else {
+        showNotification('Ошибка при обновлении аватарки', 'error');
+    }
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+
+document.addEventListener('DOMContentLoaded', async () => {
+    loadCurrentUser();
+    await loadUsers();
+    await loadReviews();
+    initStarRating();
+    
+    const fileInput = document.getElementById('avatarFileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileUpload);
+    }
+    
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+    
+    if (currentUser) {
+        updateProfileAvatarPreview(currentUser.avatarUrl, currentUser.username);
+    }
+});
+
+// Экспорт глобальных функций
+window.openAuthModal = openAuthModal;
+window.closeAuthModal = closeAuthModal;
+window.switchToRegister = switchToRegister;
+window.switchToLogin = switchToLogin;
+window.register = register;
+window.login = login;
+window.logout = logout;
+window.openReviewModal = openReviewModal;
+window.closeReviewModal = closeReviewModal;
+window.submitReview = submitReview;
+window.deleteReview = deleteReview;
+window.openProfileModal = openProfileModal;
+window.closeProfileModal = closeProfileModal;
+window.switchAvatarTab = switchAvatarTab;
+window.selectAvatarPreset = selectAvatarPreset;
+window.loadAvatarFromUrl = loadAvatarFromUrl;
+window.saveAvatar = saveAvatar;
+</script>
+
+<!-- Модалка регистрации/входа -->
+<div id="authModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeAuthModal()">&times;</span>
+        <div id="loginForm">
+            <h3>Вход</h3>
+            <input type="email" id="loginEmail" placeholder="Email" autocomplete="email">
+            <input type="password" id="loginPassword" placeholder="Пароль (6 символов)" maxlength="6">
+            <div class="error-message" id="loginError"></div>
+            <button onclick="login()">Войти</button>
+            <div class="modal-switch">Нет аккаунта? <span onclick="switchToRegister()">Зарегистрироваться</span></div>
+        </div>
+        <div id="registerForm" style="display: none;">
+            <h3>Регистрация</h3>
+            <input type="email" id="regEmail" placeholder="Email" autocomplete="email">
+            <input type="text" id="regUsername" placeholder="Имя пользователя">
+            <input type="password" id="regPassword" placeholder="Пароль (6 цифр или букв)" maxlength="6">
+            <div class="error-message" id="regError"></div>
+            <button onclick="register()">Зарегистрироваться</button>
+            <div class="modal-switch">Уже есть аккаунт? <span onclick="switchToLogin()">Войти</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка добавления отзыва -->
+<div id="reviewModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeReviewModal()">&times;</span>
+        <h3>Ваш отзыв</h3>
+        <div class="star-rating" id="starRating">
+            <i class="far fa-star" data-rating="1"></i>
+            <i class="far fa-star" data-rating="2"></i>
+            <i class="far fa-star" data-rating="3"></i>
+            <i class="far fa-star" data-rating="4"></i>
+            <i class="far fa-star" data-rating="5"></i>
+        </div>
+        <textarea id="reviewText" class="review-textarea" placeholder="Напишите ваш отзыв..."></textarea>
+        <div class="error-message" id="reviewError"></div>
+        <button id="submitReviewBtn" onclick="submitReview()">Оставить отзыв</button>
+    </div>
+</div>
+
+<!-- Модалка редактирования профиля -->
+<div id="profileModal" class="modal">
+    <div class="modal-content" style="max-width: 550px;">
+        <span class="modal-close" onclick="closeProfileModal()">&times;</span>
+        <h3>Редактирование профиля</h3>
+        
+        <div class="user-avatar-large" id="profileAvatarPreview">
+            👤
+        </div>
+        
+        <div class="avatar-tabs">
+            <button class="avatar-tab active" onclick="switchAvatarTab('preset')">🎨 Пресеты</button>
+            <button class="avatar-tab" onclick="switchAvatarTab('upload')">📁 Загрузить</button>
+            <button class="avatar-tab" onclick="switchAvatarTab('url')">🔗 По URL</button>
+        </div>
+        
+        <!-- Вкладка с пресетами аватарок -->
+        <div id="presetTab" class="avatar-tab-content">
+            <div class="avatar-options" id="avatarPresets"></div>
+        </div>
+        
+        <!-- Вкладка загрузки файла -->
+        <div id="uploadTab" class="avatar-tab-content" style="display: none;">
+            <div class="avatar-upload-area" onclick="document.getElementById('avatarFileInput').click()">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Нажмите для выбора изображения</p>
+                <small>Поддерживаются JPG, PNG, GIF (макс. 5MB)</small>
+            </div>
+            <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
+            <div id="uploadPreview" class="avatar-preview" style="display: none;"></div>
+        </div>
+        
+        <!-- Вкладка с URL -->
+        <div id="urlTab" class="avatar-tab-content" style="display: none;">
+            <input type="text" id="avatarUrlInput" class="url-input" placeholder="Введите URL изображения...">
+            <button onclick="loadAvatarFromUrl()" class="auth-btn" style="margin-top: 10px;">Загрузить по URL</button>
+            <div id="urlPreview" class="avatar-preview" style="display: none; margin-top: 15px;"></div>
+        </div>
+        
+        <button onclick="saveAvatar()" class="auth-btn" style="margin-top: 20px;">Сохранить аватарку</button>
+    </div>
+</div>
+</body>
+</html>

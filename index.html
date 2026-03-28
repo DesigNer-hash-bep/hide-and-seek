@@ -853,7 +853,7 @@
 
 .user-avatar-large:hover {
     transform: scale(1.05);
-        box-shadow: 0 10px 25px rgba(255, 107, 157, 0.3);
+    box-shadow: 0 10px 25px rgba(255, 107, 157, 0.3);
 }
 
 .avatar-options {
@@ -1342,7 +1342,7 @@ async function supabaseRequest(endpoint, options = {}) {
         'apikey': SUPABASE_CONFIG.ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_CONFIG.ANON_KEY}`,
         'Content-Type': 'application/json',
-                ...options.headers
+        ...options.headers
     };
     
     const response = await fetch(url, {
@@ -1843,18 +1843,18 @@ async function deleteReview(reviewId) {
 // ==================== АВАТАРКИ ====================
 
 const avatarPresets = [
-    { name: "🌸 Сакура", url: "https://cdn-icons-png.flaticon.com/512/1998/1998592.png", emoji: "🌸" },
-    { name: "🐱 Котик", url: "https://cdn-icons-png.flaticon.com/512/1998/1998624.png", emoji: "🐱" },
-    { name: "🐶 Собака", url: "https://cdn-icons-png.flaticon.com/512/1998/1998625.png", emoji: "🐶" },
-    { name: "🦊 Лиса", url: "https://cdn-icons-png.flaticon.com/512/1998/1998628.png", emoji: "🦊" },
-    { name: "🐼 Панда", url: "https://cdn-icons-png.flaticon.com/512/1998/1998629.png", emoji: "🐼" },
-    { name: "🐸 Лягушка", url: "https://cdn-icons-png.flaticon.com/512/1998/1998631.png", emoji: "🐸" },
-    { name: "🐧 Пингвин", url: "https://cdn-icons-png.flaticon.com/512/1998/1998633.png", emoji: "🐧" },
-    { name: "🦄 Единорог", url: "https://cdn-icons-png.flaticon.com/512/1998/1998634.png", emoji: "🦄" },
-    { name: "🐉 Дракон", url: "https://cdn-icons-png.flaticon.com/512/1998/1998635.png", emoji: "🐉" },
-    { name: "👻 Призрак", url: "https://cdn-icons-png.flaticon.com/512/1998/1998636.png", emoji: "👻" },
-    { name: "🤖 Робот", url: "https://cdn-icons-png.flaticon.com/512/1998/1998637.png", emoji: "🤖" },
-    { name: "👸 Принцесса", url: "https://cdn-icons-png.flaticon.com/512/1998/1998638.png", emoji: "👸" }
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczMwE5uqobBr59tQEI0p4V1uRBt-RCXorOvTllQMZBSM2cdaIKs_NoXlW9FIyQPdHGGfjODSak21YoUkUaDu456Gz_Pe3UMgbMFeCJVHGAOvkGB9ik3FzSvIbAIgaLU43KnH9syzKBU6NaiuBgK9j2Y=w360-h360-s-no-gm?authuser=0", emoji: "🌸" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczNmU47qDTOUNfSY6uMKY8FRrWfe3orxyrX4KrjTEgG8qIohS493AJLeduAdevYCjuuJ1bV1KUc5qcA9Z7LDgQSnDJUJ4IfeXTo-xZCCCbDkJa9N7X2V22FeWm7Fkr09rFCFzbI5ghCH0H4C539D9yOK=w225-h225-s-no-gm?authuser=0", emoji: "🐱" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczOewwkrg8kU26EpvVeRQ2i32W75qN8jRgijAhdHna6CRCkRCLbibgz5tyGW1RmHfIcDlpuDhEMISdsOXKlu4tV21wXbTQu0ARjqRA2DnJ3mBNfU4NS7IrP8imzUhUVcEl8me14Fb7JuP6nsEiuiejh-=w720-h713-s-no-gm?authuser=0", emoji: "🐶" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczOw31U0azL-P1ffFGjDomqkjkH1H4U3d8eH-OpMlPciitB6G3yv-YwtDuiYfJ35nP1TU55fITdS4BEZ2EkIgg1hE99_SEEhNkiwDJWTNQBCTA008pGUiK1KT00vofChUnwZ3lFKOIGaNq-aeb6R7l4n=w1080-h1080-s-no-gm?authuser=0", emoji: "🦊" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczPQFPbFXb1xB2IhY63XaLTk4-Upox1RvsrxTDpzlSHj4QTmNOS6UVASbmxA13M-P6dMNi4_GQ6wLc_bHrlLuHaDKTBfGkD1eHBxhjz7DMINzYHsZKf46H3gCpR4udyi2CJTycdYOMPwJT8H4WiR9V17=w1080-h1080-s-no-gm?authuser=0", emoji: "🐼" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczMIAZyB--qeZ4NUo7-hZPxlZTM0nbRyu6adLBi3-cImf63dw8Oq75yuWE075A_ze84dE3n9hR51zqhPLShYZS1gqIbZjCStS0t16A_gUt5e-Tp-WnjKt7DMW4uPscDP4rWrO56LrkVRs-WfEOZDEhxz=w1080-h1080-s-no-gm?authuser=0", emoji: "🐸" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczMs0upIMHK6fyG_mzD8EUCo1eUIdPW7wNgk1kCy8299dMUrWvd5aPdaE6EZIcVm2ucGSBIzIPNQd9jTHmeMr8sbOL4I87SZTwRM0Hch_kG9NuqU-wYL1FK0VQmbBlwMTByXcgziD621KwUrXJEK9COv=w1080-h1080-s-no-gm?authuser=0", emoji: "🐧" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczNpGSrwFlAJrhEJ2qkBPpCWA-AlinSmp-6Rb_VZ7vPXdmvP2eCkm3b-y-8PSNbB0bQHdrTrHpivi8ez_umBTISQuVOWp4QEWuNQPePq2MOtX3PXlH83s144ehyiS9ZLXAhwq0RZhDu3pxbBwfWgEo9d=w1080-h1080-s-no-gm?authuser=0", emoji: "🦄" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczPpZI8L74CBVLNYSC-Vn99BceaiFfquNMu0jj0Cfpu9psr2Gcsqj8XMBc8IfG1zeIzsTuUzsw4SK7XLuiLY7EIj72r6C_09ai2WmoOlsL1jsKu46Z3r3C7Gg5nUg8xtJRFlC9cFh1Xeo0xpAr_cxlH-=w1080-h1080-s-no-gm?authuser=0", emoji: "🐉" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczN4a22mC3ThBLo6BsHL3Fy7nbvEKWhefXiAPex_aHLaaMVNgNUbm3XyO5Vi7jPXfSFw8a9dez04naq-44GTbTV0RBuic1pQiNmctyKoHodTRIdchv_iNKdkJ32l6-jL8ixrnXyzDZNQnK3GMs_Kiujx=w1080-h1080-s-no-gm?authuser=0", emoji: "👻" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczPqrsEHvoM9R7Eby_HUKfj6_0I0091tlM36wALRL11pNtOw5ZzL6UY_CYEhmqnTq6rriAxuMnCLtHJxzUcl-0iWpmzBHppRP60kQz01wbZdONLl2a5d392dscyDcUx9VuqD0TZRMxe2tZLgxqRpfDCE=w1080-h1080-s-no-gm?authuser=0", emoji: "🤖" },
+    { name: " ", url: "https://lh3.googleusercontent.com/pw/AP1GczPSwZZWlceEFiVlRBJD1TZF81x85v0PBeu06eLqC4tBr6JESXOnUjUI7ljszFaoQnjoY8FkR2qMuP4zuGXNif0KHKjiDMgf7CsWz3jCqH1k3q2gqta1PMBus_DDkmOLdswn2iv1pGZm6KS3ktdBScrR=w1080-h1080-s-no-gm?authuser=0", emoji: "👸" }
 ];
 
 let selectedAvatarUrl = null;

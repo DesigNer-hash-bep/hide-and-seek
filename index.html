@@ -1610,6 +1610,69 @@ function updateUserUI() {
     }
 }
 
+async function login() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+    
+    if (!email || !password) {
+        errorEl.textContent = 'Заполните все поля';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    if (password.length !== 6) {
+        errorEl.textContent = 'Пароль должен содержать ровно 6 символов';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    try {
+        // Получаем пользователя по email
+        const usersResponse = await supabaseRequest(`users?email=eq.${encodeURIComponent(email)}&select=*`);
+        
+        if (usersResponse.length === 0) {
+            errorEl.textContent = 'Пользователь с таким email не найден';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        const user = usersResponse[0];
+        const passwordHash = await hashPassword(password);
+        
+        if (user.password_hash !== passwordHash) {
+            errorEl.textContent = 'Неверный пароль';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        // Успешный вход
+        currentUser = {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            avatarColor: user.avatar_color,
+            avatarUrl: user.avatar_url
+        };
+        
+        localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(currentUser));
+        updateUserUI();
+        closeAuthModal();
+        
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+        
+        showNotification('Вход выполнен успешно!', 'success');
+        
+        // Обновляем отзывы (для отображения кнопки удаления у своих отзывов)
+        await loadReviews();
+        
+    } catch (error) {
+        console.error('Ошибка входа:', error);
+        errorEl.textContent = 'Ошибка сервера. Попробуйте позже.';
+        errorEl.style.display = 'block';
+    }
+}
 // ==================== ОТЗЫВЫ ====================
 
 function updateRatingSummary() {

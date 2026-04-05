@@ -1007,6 +1007,73 @@
         transform: translateX(100%);
     }
 }
+
+/* Стили таблицы лидеров */
+#leaderboard table {
+    font-family: 'Inter', sans-serif;
+}
+#leaderboard td, #leaderboard th {
+    text-align: center;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(255,107,157,0.2);
+}
+.leaderboard-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: linear-gradient(135deg, #ff6b9d, #ff3b6f);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 1rem;
+}
+.privilege-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 3px;
+    background: #eee;
+    color: #333;
+}
+.privilege-PvP { background: #ff4444; color: white; }
+.privilege-Fly { background: #44aaff; color: white; }
+.edit-player-btn, .delete-player-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    margin: 0 5px;
+    transition: 0.2s;
+}
+.edit-player-btn { color: #ffa500; }
+.edit-player-btn:hover { color: #ff8c00; transform: scale(1.1); }
+.delete-player-btn { color: #e63946; }
+.delete-player-btn:hover { color: #c9184a; transform: scale(1.1); }
+.privilege-field {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+.privilege-field select {
+    flex: 1;
+    padding: 8px;
+    border-radius: 50px;
+    border: 1px solid #ffb6d1;
+    font-family: 'Inter', sans-serif;
+}
+.remove-privilege-btn {
+    background: none;
+    border: none;
+    color: #e63946;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
     </style>
 </head>
 <body>
@@ -1022,6 +1089,7 @@
     <a href="#builders">Строители</a>
     <a href="#history">История</a>
     <a href="#maps">Карты</a>
+    <a href="#leaderboard">🏆 Таблица лидеров</a>
 </div>
 <div class="user-area" id="userArea">
     <button class="auth-btn" onclick="openAuthModal()">Войти</button>
@@ -1111,6 +1179,55 @@
         <p>🌸 Hide and Seek Project 🌸</p>
         <p style="margin-top: 10px;">Запущен 21 марта 2025 года</p>
     </div>
+    
+    <!-- СЕКЦИЯ ТАБЛИЦЫ ЛИДЕРОВ -->
+<section id="leaderboard" class="reviews-section" style="margin-top: 20px;">
+    <h2 class="section-title" style="margin-bottom: 30px;">🏆 Таблица лидеров</h2>
+    
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.5); border-radius: 20px; overflow: hidden;">
+            <thead style="background: linear-gradient(135deg, #ff6b9d, #ff3b6f); color: white;">
+                <tr>
+                    <th style="padding: 15px;">№</th>
+                    <th style="padding: 15px;">Аватар</th>
+                    <th style="padding: 15px;">Никнейм</th>
+                    <th style="padding: 15px;">Поинты</th>
+                    <th style="padding: 15px;">Привилегии</th>
+                    <th style="padding: 15px;" id="adminActionsHeader" style="display: none;">Действия</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardBody">
+                <tr><td colspan="6" style="text-align: center; padding: 40px;">Загрузка...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Кнопка для админа (добавить игрока) -->
+    <div id="adminLeaderboardPanel" style="margin-top: 30px; text-align: center; display: none;">
+        <button onclick="openAddPlayerModal()" class="add-review-btn" style="background: linear-gradient(135deg, #4caf50, #45a049);">➕ Добавить игрока</button>
+    </div>
+</section>
+
+<!-- Модалка добавления/редактирования игрока (только для админа) -->
+<div id="playerModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="modal-close" onclick="closePlayerModal()">&times;</span>
+        <h3 id="playerModalTitle">Добавить игрока</h3>
+        <input type="text" id="playerNickname" placeholder="Никнейм" autocomplete="off">
+        <input type="url" id="playerAvatarUrl" placeholder="URL аватарки (необязательно)">
+        <input type="number" id="playerPoints" placeholder="Количество поинтов" value="0">
+        
+        <div style="margin: 15px 0;">
+            <label style="font-weight: 600;">Привилегии (до 5):</label>
+            <div id="privilegesContainer"></div>
+            <button type="button" onclick="addPrivilegeField()" class="auth-btn" style="margin-top: 8px; background: #666;">➕ Добавить привилегию</button>
+        </div>
+        
+        <div class="error-message" id="playerModalError"></div>
+        <button id="savePlayerBtn" onclick="savePlayer()">Сохранить</button>
+        <input type="hidden" id="editingPlayerId">
+    </div>
+</div>
 </footer>
 
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
@@ -1607,6 +1724,9 @@ function updateUserUI() {
     } else {
         userArea.innerHTML = `<button class="auth-btn" onclick="openAuthModal()">Войти</button>`;
         if (addReviewBtn) addReviewBtn.disabled = true;
+    }
+    if (typeof renderLeaderboard === 'function') {
+    loadLeaderboard();
     }
 }
 
@@ -2201,5 +2321,221 @@ window.saveAvatar = saveAvatar;
         <button onclick="saveAvatar()" class="auth-btn" style="margin-top: 20px;">Сохранить аватарку</button>
     </div>
 </div>
+
+<script>
+// ==================== ТАБЛИЦА ЛИДЕРОВ (LEADERBOARD) ====================
+const SUPABASE_SERVICE_KEY = SUPABASE_CONFIG.ANON_KEY;
+
+let leaderboardData = [];
+
+// Проверка, является ли текущий пользователь админом (почта desigvn6@gmail.com)
+function isAdmin() {
+    return currentUser && currentUser.email === "desigvn6@gmail.com";
+}
+
+// Загрузка таблицы лидеров
+async function loadLeaderboard() {
+    try {
+        const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/leaderboard?order=points.desc`, {
+            headers: {
+                'apikey': SUPABASE_CONFIG.ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_CONFIG.ANON_KEY}`
+            }
+        });
+        if (!response.ok) throw new Error();
+        leaderboardData = await response.json();
+        renderLeaderboard();
+    } catch (error) {
+        console.error("Ошибка загрузки лидерборда:", error);
+        document.getElementById('leaderboardBody').innerHTML = '<tr><td colspan="6" style="text-align:center;">Ошибка загрузки</td></tr>';
+    }
+}
+
+// Отрисовка таблицы
+function renderLeaderboard() {
+    const tbody = document.getElementById('leaderboardBody');
+    const adminActionsHeader = document.getElementById('adminActionsHeader');
+    const isAdminUser = isAdmin();
+    
+    if (adminActionsHeader) {
+        adminActionsHeader.style.display = isAdminUser ? 'table-cell' : 'none';
+    }
+    document.getElementById('adminLeaderboardPanel').style.display = isAdminUser ? 'block' : 'none';
+    
+    if (!leaderboardData.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Пока нет игроков в таблице лидеров</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = leaderboardData.map((player, idx) => {
+        const avatarHtml = player.avatar_url 
+            ? `<img src="${player.avatar_url}" class="leaderboard-avatar" style="object-fit: cover;">`
+            : `<div class="leaderboard-avatar">${player.nickname.charAt(0).toUpperCase()}</div>`;
+        
+        const privilegesHtml = (player.privileges || [])
+            .map(priv => `<span class="privilege-badge privilege-${priv}">${priv}</span>`)
+            .join('');
+        
+        const actionsHtml = isAdminUser ? `
+            <td>
+                <button class="edit-player-btn" onclick="openEditPlayerModal('${player.id}')"><i class="fas fa-edit"></i></button>
+                <button class="delete-player-btn" onclick="deletePlayer('${player.id}')"><i class="fas fa-trash-alt"></i></button>
+            </td>
+        ` : '';
+        
+        return `
+            <tr>
+                <td style="padding: 12px;">${idx + 1}</td>
+                <td>${avatarHtml}</td>
+                <td><strong>${escapeHtml(player.nickname)}</strong></td>
+                <td>  ${player.points}</td>
+                <td>${privilegesHtml || '—'}</td>
+                ${actionsHtml ? actionsHtml : ''}
+            </tr>
+        `;
+    }).join('');
+}
+
+// --- Админ-функции (работают через service_role) ---
+async function adminFetch(endpoint, method, body = null) {
+    const url = `${SUPABASE_CONFIG.URL}/rest/v1/${endpoint}`;
+    const headers = {
+        'apikey': SUPABASE_CONFIG.ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+    };
+    const options = { method, headers };
+    if (body) options.body = JSON.stringify(body);
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error(await response.text());
+    return response;
+}
+
+async function addPlayerToLeaderboard(player) {
+    if (!isAdmin()) throw new Error("Нет прав");
+    await adminFetch('leaderboard', 'POST', player);
+    await loadLeaderboard();
+}
+
+async function updatePlayerInLeaderboard(id, updates) {
+    if (!isAdmin()) throw new Error("Нет прав");
+    await adminFetch(`leaderboard?id=eq.${id}`, 'PATCH', updates);
+    await loadLeaderboard();
+}
+
+async function deletePlayerFromLeaderboard(id) {
+    if (!isAdmin()) throw new Error("Нет прав");
+    await adminFetch(`leaderboard?id=eq.${id}`, 'DELETE');
+    await loadLeaderboard();
+}
+
+// --- Модалка добавления/редактирования ---
+let privilegesList = [];
+
+function addPrivilegeField(value = '') {
+    const container = document.getElementById('privilegesContainer');
+    const div = document.createElement('div');
+    div.className = 'privilege-field';
+    div.innerHTML = `
+        <select class="privilege-select">
+            <option value="PvP" ${value === 'PvP' ? 'selected' : ''}>PvP (красный)</option>
+            <option value="Fly" ${value === 'Fly' ? 'selected' : ''}>Fly (голубой)</option>
+        </select>
+        <button type="button" class="remove-privilege-btn" onclick="this.parentElement.remove()">✖</button>
+    `;
+    container.appendChild(div);
+}
+
+function getPrivilegesFromFields() {
+    const selects = document.querySelectorAll('#privilegesContainer .privilege-select');
+    return Array.from(selects).map(sel => sel.value);
+}
+
+function openAddPlayerModal() {
+    if (!isAdmin()) return;
+    document.getElementById('playerModalTitle').innerText = 'Добавить игрока';
+    document.getElementById('playerNickname').value = '';
+    document.getElementById('playerAvatarUrl').value = '';
+    document.getElementById('playerPoints').value = '0';
+    document.getElementById('privilegesContainer').innerHTML = '';
+    document.getElementById('editingPlayerId').value = '';
+    document.getElementById('playerModalError').style.display = 'none';
+    document.getElementById('playerModal').classList.add('active');
+}
+
+function openEditPlayerModal(playerId) {
+    const player = leaderboardData.find(p => p.id === playerId);
+    if (!player || !isAdmin()) return;
+    document.getElementById('playerModalTitle').innerText = 'Редактировать игрока';
+    document.getElementById('playerNickname').value = player.nickname;
+    document.getElementById('playerAvatarUrl').value = player.avatar_url || '';
+    document.getElementById('playerPoints').value = player.points;
+    document.getElementById('privilegesContainer').innerHTML = '';
+    (player.privileges || []).forEach(priv => addPrivilegeField(priv));
+    if ((player.privileges || []).length === 0) addPrivilegeField();
+    document.getElementById('editingPlayerId').value = player.id;
+    document.getElementById('playerModalError').style.display = 'none';
+    document.getElementById('playerModal').classList.add('active');
+}
+
+async function savePlayer() {
+    const nickname = document.getElementById('playerNickname').value.trim();
+    const avatarUrl = document.getElementById('playerAvatarUrl').value.trim() || null;
+    const points = parseInt(document.getElementById('playerPoints').value) || 0;
+    const privileges = getPrivilegesFromFields().slice(0, 5);
+    const editingId = document.getElementById('editingPlayerId').value;
+    
+    if (!nickname) {
+        document.getElementById('playerModalError').innerText = 'Введите никнейм';
+        document.getElementById('playerModalError').style.display = 'block';
+        return;
+    }
+    if (privileges.length > 5) {
+        document.getElementById('playerModalError').innerText = 'Не более 5 привилегий';
+        document.getElementById('playerModalError').style.display = 'block';
+        return;
+    }
+    
+    try {
+        if (editingId) {
+            await updatePlayerInLeaderboard(editingId, {
+                nickname, avatar_url: avatarUrl, points, privileges
+            });
+        } else {
+            const newId = Date.now().toString();
+            await addPlayerToLeaderboard({
+                id: newId, nickname, avatar_url: avatarUrl, points, privileges,
+                created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+            });
+        }
+        closePlayerModal();
+        showNotification('Сохранено!', 'success');
+    } catch (err) {
+        document.getElementById('playerModalError').innerText = 'Ошибка сохранения: ' + err.message;
+        document.getElementById('playerModalError').style.display = 'block';
+    }
+}
+
+function closePlayerModal() {
+    document.getElementById('playerModal').classList.remove('active');
+}
+
+async function deletePlayer(id) {
+    if (!isAdmin()) return;
+    if (confirm('Удалить игрока из таблицы лидеров?')) {
+        try {
+            await deletePlayerFromLeaderboard(id);
+            showNotification('Игрок удалён', 'success');
+        } catch (err) {
+            alert('Ошибка удаления');
+        }
+    }
+}
+
+// Подгружаем таблицу лидеров при загрузке страницы
+setTimeout(() => {
+    if (document.getElementById('leaderboard')) loadLeaderboard();
+}, 500);
+</script>
 </body>
 </html>
